@@ -1,22 +1,32 @@
-# Domovoy Automata
+# Domovoy Automata Requirements
 
-## Project Overview
-**Project Name**: Domovoy Automata  
-**Description**: A system monitoring and automation utility for Linux, using a plugin structure to manage different aspects of the system. The main program will handle message passing between plugins and the user interface.
+## Overview
+Domovoy Automata is a modular system resource management utility for Linux, supporting a plugin-based architecture. The main program coordinates plugins, each of which is responsible for specific aspects of system monitoring and management.
 
-## Requirements
+## Main Program Requirements
+- List currently installed plugins.
+- Show plugin status (running, stopped, OK, ERROR).
+- Control buttons to start, stop, or restart each plugin.
+- Configuration file (`main_config.json`) lists active plugins.
 
-### Plugin Structure
-- Each aspect of the system (CPU monitoring, memory monitoring, disk monitoring, backups, etc.) should be implemented as a separate plugin.
-- Plugins should be discoverable and loadable at runtime.
-- The main program should be able to communicate with each plugin and facilitate communication between plugins.
+## Plugin Requirements
+- Each plugin has its own configuration utility.
+- Separate configuration files for each plugin.
+- Plugins should be Python scripts or compiled binaries.
+- Plugins can communicate with the main program for status updates and command execution.
 
-### Message Passing
-- Implement a robust message passing system between the main program and plugins.
-- Allow two-way communication between the main program and plugins.
-- Consider using `multiprocessing.Queue`, `multiprocessing.Pipe`, or sockets for IPC.
-- Explore the use of pub/sub systems like ZeroMQ or Redis for more complex messaging requirements.
-- Ensure the message passing system is scalable and efficient.
+## Configuration Utility
+- `configure.py` allows setting thresholds, specifying mount points, and configuring disk thresholds.
+- Monitor for new mount points and initiate backups when new ones become available.
+- Popup dialogs for initiating backups with `rsync -av`, displaying terminal output, and providing a dismiss button.
+
+## Communication
+- Robust message passing mechanism between the main program and plugins.
+- Dedicated test plugin to verify communication setup.
+
+## Plugin Management
+- Plugins directory contains subdirectories for each plugin.
+- Plugins can be started, stopped, or restarted via the main program UI.
 
 ### System Monitoring Plugins
 - **CPU Monitoring Plugin**:
@@ -49,8 +59,11 @@
 ## Current State
 
 ### Implemented Features
-- Basic system monitoring for CPU, memory, and disk usage.
-- Initial configuration dialog for setting thresholds and mount points.
+Test plugin
+
+## Additional Requirements
+- Valid PySide6 (Qt6) support.
+- Each plugin has a status of either running, stopped, OK, or ERROR.
 
 ### Issues
 - Integrating backup functionality with user prompts.

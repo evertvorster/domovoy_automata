@@ -1,19 +1,24 @@
 import json
 import os
 import sys
-from PySide6.QtWidgets import (
-    QApplication, QDialog, QVBoxLayout, QPushButton, QLineEdit, QListWidget, 
-    QInputDialog, QMessageBox, QWidget, QLabel, QHBoxLayout
-)
+from PySide6.QtWidgets import QApplication, QDialog, QVBoxLayout, QPushButton, QListWidget, QMessageBox, QInputDialog
 
 CONFIG_FILE = "config.json"
+PLUGIN_DIR = "plugins"
 
 def load_config():
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "r") as file:
-            return json.load(file)
+            try:
+                config = json.load(file)
+                if "plugins" not in config:
+                    config["plugins"] = []
+                return config
+            except json.JSONDecodeError:
+                print("Error: Config file is not valid JSON. Using default configuration.")
+                return {"plugins": []}
     else:
-        return {"cpu_threshold": 80, "mount_points": {}}
+        return {"plugins": []}
 
 def save_config(config):
     with open(CONFIG_FILE, "w") as file:
@@ -24,26 +29,24 @@ class ConfigureDialog(QDialog):
         super().__init__()
         self.setWindowTitle("Configure Domovoy Automata")
         self.config = load_config()
+        self.available_plugins = self.scan_plugins()
         self.initUI()
 
     def initUI(self):
         layout = QVBoxLayout()
 
-        self.cpu_edit = QLineEdit(str(self.config["cpu_threshold"]))
-        layout.addLayout(self.create_row("CPU Threshold:", self.cpu_edit))
+        self.plugins_list = QListWidget()
+        for plugin_name in self.config["plugins"]:
+            self.plugins_list.addItem(plugin_name)
+        layout.addWidget(self.plugins_list)
 
-        self.mount_points_list = QListWidget()
-        for mp, settings in self.config["mount_points"].items():
-            self.mount_points_list.addItem(f"{mp} - {settings['name']} - {settings['threshold']}%")
-        layout.addWidget(self.mount_points_list)
-
-        add_button = QPushButton("Add Mount Point")
-        add_button.clicked.connect(self.add_mount_point)
+        add_button = QPushButton("Add Plugin")
+        add_button.clicked.connect(self.add_plugin)
         layout.addWidget(add_button)
 
-        edit_button = QPushButton("Edit Mount Point")
-        edit_button.clicked.connect(self.edit_mount_point)
-        layout.addWidget(edit_button)
+        remove_button = QPushButton("Remove Plugin")
+        remove_button.clicked.connect(self.remove_plugin)
+        layout.addWidget(remove_button)
 
         save_button = QPushButton("Save")
         save_button.clicked.connect(self.save_config)
@@ -51,40 +54,34 @@ class ConfigureDialog(QDialog):
 
         self.setLayout(layout)
 
-    def create_row(self, label_text, widget):
-        row = QHBoxLayout()
-        row.addWidget(QLabel(label_text))
-        row.addWidget(widget)
-        return row
+    def scan_plugins(self):
+        plugins = []
+        for filename in os.listdir(PLUGIN_DIR):
+            if filename.endswith(".py") and filename != "__init__.py":
+                plugin_name = filename[:-3]
+                plugins.append(plugin_name)
+            elif filename.endswith(".so") or filename.endswith(".dll"):
+                plugin_name = filename
+                plugins.append(plugin_name)
+        return plugins
 
-    def add_mount_point(self):
-        mount_point, ok = QInputDialog.getText(self, "Add Mount Point", "Enter Mount Point Path:")
-        if ok:
-            name, ok = QInputDialog.getText(self, "Add Mount Point", "Enter User Definable Name:")
-            if ok:
-                threshold, ok = QInputDialog.getInt(self, "Add Mount Point", "Enter Disk Threshold (%):", minValue=0, maxValue=100)
-                if ok:
-                    if os.path.exists(mount_point):
-                        self.config["mount_points"][mount_point] = {"name": name, "threshold": threshold}
-                        self.mount_points_list.addItem(f"{mount_point} - {name} - {threshold}%")
-                    else:
-                        QMessageBox.warning(self, "Error", f"Mount point {mount_point} does not exist.")
+    def add_plugin(self):
+        plugin_name, ok = QInputDialog.getItem(self, "Add Plugin", "Select Plugin:", self.available_plugins, 0, False)
+        if ok and plugin_name:
+            if plugin_name not in self.config["plugins"]:
+                self.config["plugins"].append(plugin_name)
+                self.plugins_list.addItem(plugin_name)
+            else:
+                QMessageBox.warning(self, "Error", f"Plugin {plugin_name} is already added.")
 
-    def edit_mount_point(self):
-        current_item = self.mount_points_list.currentItem()
+    def remove_plugin(self):
+        current_item = self.plugins_list.currentItem()
         if current_item:
-            mount_point = current_item.text().split(" - ")[0]
-            current_settings = self.config["mount_points"][mount_point]
-
-            new_name, ok = QInputDialog.getText(self, "Edit Mount Point", "Enter User Definable Name:", text=current_settings["name"])
-            if ok:
-                new_threshold, ok = QInputDialog.getInt(self, "Edit Mount Point", "Enter Disk Threshold (%):", value=current_settings["threshold"], minValue=0, maxValue=100)
-                if ok:
-                    self.config["mount_points"][mount_point] = {"name": new_name, "threshold": new_threshold}
-                    self.mount_points_list.currentItem().setText(f"{mount_point} - {new_name} - {new_threshold}%")
+            plugin_name = current_item.text()
+            self.config["plugins"].remove(plugin_name)
+            self.plugins_list.takeItem(self.plugins_list.row(current_item))
 
     def save_config(self):
-        self.config["cpu_threshold"] = int(self.cpu_edit.text())
         save_config(self.config)
         self.accept()
 

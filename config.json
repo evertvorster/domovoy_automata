@@ -5,5 +5,8 @@
             "name": "Internal Storage",
             "threshold": 80
         }
-    }
+    },
+    "plugins": [
+        "test_plugin"
+    ]
 }
