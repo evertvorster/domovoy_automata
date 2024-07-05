@@ -1,7 +1,10 @@
 import json
 import os
 import sys
-from PySide6.QtWidgets import QApplication, QDialog, QVBoxLayout, QPushButton, QLineEdit, QListWidget, QInputDialog, QMessageBox
+from PySide6.QtWidgets import (
+    QApplication, QDialog, QVBoxLayout, QPushButton, QLineEdit, QListWidget, 
+    QInputDialog, QMessageBox, QWidget, QLabel, QHBoxLayout
+)
 
 CONFIG_FILE = "config.json"
 
@@ -27,7 +30,7 @@ class ConfigureDialog(QDialog):
         layout = QVBoxLayout()
 
         self.cpu_edit = QLineEdit(str(self.config["cpu_threshold"]))
-        layout.addWidget(self.create_row("CPU Threshold:", self.cpu_edit))
+        layout.addLayout(self.create_row("CPU Threshold:", self.cpu_edit))
 
         self.mount_points_list = QListWidget()
         for mp, settings in self.config["mount_points"].items():
@@ -49,17 +52,17 @@ class ConfigureDialog(QDialog):
         self.setLayout(layout)
 
     def create_row(self, label_text, widget):
-        layout = QVBoxLayout()
-        layout.addWidget(QPushButton(label_text))
-        layout.addWidget(widget)
-        return layout
+        row = QHBoxLayout()
+        row.addWidget(QLabel(label_text))
+        row.addWidget(widget)
+        return row
 
     def add_mount_point(self):
         mount_point, ok = QInputDialog.getText(self, "Add Mount Point", "Enter Mount Point Path:")
         if ok:
             name, ok = QInputDialog.getText(self, "Add Mount Point", "Enter User Definable Name:")
             if ok:
-                threshold, ok = QInputDialog.getInt(self, "Add Mount Point", "Enter Disk Threshold (%):", min=0, max=100)
+                threshold, ok = QInputDialog.getInt(self, "Add Mount Point", "Enter Disk Threshold (%):", minValue=0, maxValue=100)
                 if ok:
                     if os.path.exists(mount_point):
                         self.config["mount_points"][mount_point] = {"name": name, "threshold": threshold}
@@ -75,7 +78,7 @@ class ConfigureDialog(QDialog):
 
             new_name, ok = QInputDialog.getText(self, "Edit Mount Point", "Enter User Definable Name:", text=current_settings["name"])
             if ok:
-                new_threshold, ok = QInputDialog.getInt(self, "Edit Mount Point", "Enter Disk Threshold (%):", value=current_settings["threshold"], min=0, max=100)
+                new_threshold, ok = QInputDialog.getInt(self, "Edit Mount Point", "Enter Disk Threshold (%):", value=current_settings["threshold"], minValue=0, maxValue=100)
                 if ok:
                     self.config["mount_points"][mount_point] = {"name": new_name, "threshold": new_threshold}
                     self.mount_points_list.currentItem().setText(f"{mount_point} - {new_name} - {new_threshold}%")

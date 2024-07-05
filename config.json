@@ -1,0 +1,9 @@
+{
+    "cpu_threshold": 80,
+    "mount_points": {
+        "/mnt/int": {
+            "name": "Internal Storage",
+            "threshold": 80
+        }
+    }
+}
