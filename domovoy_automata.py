@@ -1,115 +1,64 @@
-import sys
 import json
 import os
-import subprocess
-from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QPushButton, QLabel, QListWidget, QListWidgetItem, QHBoxLayout, QDialog, QLineEdit, QInputDialog, QFormLayout
-from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QListWidget, QPushButton, QMessageBox
 
-CONFIG_FILE = "config.json"
-PLUGINS_DIR = "plugins"
-
-class DomovoyAutomata(QMainWindow):
+class MainProgram(QWidget):
     def __init__(self):
         super().__init__()
-        self.config = self.load_config()
         self.initUI()
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.update_status)
-        self.timer.start(5000)  # Update status every 5 seconds
-
-    def load_config(self):
-        if not os.path.exists(CONFIG_FILE):
-            return {"plugins": []}
-        try:
-            with open(CONFIG_FILE, "r") as f:
-                config = json.load(f)
-            for plugin in config["plugins"]:
-                if not os.path.exists(os.path.join(PLUGINS_DIR, plugin)):
-                    raise ValueError(f"Plugin {plugin} does not exist in the plugins directory.")
-            return config
-        except (json.JSONDecodeError, ValueError) as e:
-            print(f"Error loading config file: {e}. Using default configuration.")
-            return {"plugins": []}
-
-    def save_config(self):
-        with open(CONFIG_FILE, "w") as f:
-            json.dump(self.config, f, indent=4)
 
     def initUI(self):
-        self.setWindowTitle("Domovoy Automata")
-        self.setGeometry(100, 100, 800, 600)
+        self.setWindowTitle('Domovoy Automata')
+        self.layout = QVBoxLayout(self)
+        self.plugin_status = QListWidget(self)
+        self.layout.addWidget(self.plugin_status)
 
-        layout = QVBoxLayout()
-        self.plugin_list = QListWidget()
-        layout.addWidget(self.plugin_list)
+        self.btn_start = QPushButton('Start', self)
+        self.btn_stop = QPushButton('Stop', self)
+        self.btn_restart = QPushButton('Restart', self)
+        self.layout.addWidget(self.btn_start)
+        self.layout.addWidget(self.btn_stop)
+        self.layout.addWidget(self.btn_restart)
 
-        self.configure_button = QPushButton("Configure")
-        self.configure_button.clicked.connect(self.configure)
-        layout.addWidget(self.configure_button)
+        self.btn_start.clicked.connect(self.start_plugin)
+        self.btn_stop.clicked.connect(self.stop_plugin)
+        self.btn_restart.clicked.connect(self.restart_plugin)
 
-        widget = QWidget()
-        widget.setLayout(layout)
-        self.setCentralWidget(widget)
+        self.load_plugins()
+        self.show()
 
-        self.update_plugin_list()
+    def load_plugins(self):
+        self.plugin_status.clear()
+        main_config_path = os.path.join('config', 'main_config.json')
+        if not os.path.exists(main_config_path):
+            QMessageBox.critical(self, "Error", "Main configuration file not found.")
+            return
 
-    def update_plugin_list(self):
-        self.plugin_list.clear()
-        for plugin in self.config["plugins"]:
-            item = QListWidgetItem(plugin)
-            widget = QWidget()
-            layout = QHBoxLayout()
+        with open(main_config_path, 'r') as f:
+            config = json.load(f)
 
-            name_label = QLabel(plugin)
-            layout.addWidget(name_label)
+        self.plugins = config.get('plugins', [])
+        for plugin in self.plugins:
+            plugin_name = plugin["name"]
+            plugin_path = os.path.join('plugins', plugin_name)
+            if not os.path.exists(plugin_path):
+                QMessageBox.critical(self, "Error", f"Plugin {plugin_name} does not exist in the plugins directory.")
+                continue
+            self.plugin_status.addItem(f'{plugin_name} - {plugin["status"]}')
 
-            status_label = QLabel("Unknown")
-            layout.addWidget(status_label)
+    def start_plugin(self):
+        selected_plugin = self.plugin_status.currentItem().text()
+        print(f'Starting plugin: {selected_plugin}')
 
-            start_button = QPushButton("Start")
-            start_button.clicked.connect(lambda _, p=plugin: self.start_plugin(p))
-            layout.addWidget(start_button)
+    def stop_plugin(self):
+        selected_plugin = self.plugin_status.currentItem().text()
+        print(f'Stopping plugin: {selected_plugin}')
 
-            stop_button = QPushButton("Stop")
-            stop_button.clicked.connect(lambda _, p=plugin: self.stop_plugin(p))
-            layout.addWidget(stop_button)
+    def restart_plugin(self):
+        selected_plugin = self.plugin_status.currentItem().text()
+        print(f'Restarting plugin: {selected_plugin}')
 
-            restart_button = QPushButton("Restart")
-            restart_button.clicked.connect(lambda _, p=plugin: self.restart_plugin(p))
-            layout.addWidget(restart_button)
-
-            widget.setLayout(layout)
-            item.setSizeHint(widget.sizeHint())
-            self.plugin_list.addItem(item)
-            self.plugin_list.setItemWidget(item, widget)
-
-    def start_plugin(self, plugin):
-        plugin_path = os.path.join(PLUGINS_DIR, plugin)
-        try:
-            subprocess.Popen(["python", plugin_path])
-        except Exception as e:
-            print(f"Error starting plugin {plugin}: {e}")
-
-    def stop_plugin(self, plugin):
-        # This is a placeholder. Implement plugin stop logic.
-        print(f"Stopping plugin {plugin}...")
-
-    def restart_plugin(self, plugin):
-        self.stop_plugin(plugin)
-        self.start_plugin(plugin)
-
-    def update_status(self):
-        # This is a placeholder. Implement logic to check plugin status.
-        pass
-
-    def configure(self):
-        subprocess.call(["python", "configure.py"])
-
-def main():
-    app = QApplication(sys.argv)
-    ex = DomovoyAutomata()
-    ex.show()
-    sys.exit(app.exec())
-
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    app = QApplication([])
+    main_program = MainProgram()
+    app.exec()

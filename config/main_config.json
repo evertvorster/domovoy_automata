@@ -1,0 +1,8 @@
+{
+    "plugins": [
+        {
+            "name": "test_plugin",
+            "status": "stopped"
+        }
+    ]
+}
